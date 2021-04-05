@@ -267,4 +267,3 @@ bool Unifier::isMu(std::shared_ptr<TipType> type) {
 bool Unifier::isAlpha(std::shared_ptr<TipType> type) {
     return std::dynamic_pointer_cast<TipAlpha>(type) != nullptr;
 }
-

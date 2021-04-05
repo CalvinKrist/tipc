@@ -13,8 +13,7 @@
  * given program.  The inferred types for names declared in the program can then be accessed.
  */
 class TypeInference {
-  SymbolTable* symbols;
-  std::unique_ptr<Unifier> unifier;
+
 public:
   TypeInference(SymbolTable* s, std::unique_ptr<Unifier> u) : symbols(s), unifier(std::move(u)) {}
 
@@ -46,6 +45,9 @@ public:
    * \return A shared pointer to the inferred type for the AST node.
    */
   std::shared_ptr<TipType> getInferredType(ASTDeclNode *node);
+
+  SymbolTable* symbols;
+  std::unique_ptr<Unifier> unifier;
 
   //! Print type inference results to output stream
   void print(std::ostream &os);

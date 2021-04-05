@@ -32,6 +32,10 @@ public:
      */
     ~Unifier() = default;
 
+    std::vector<TypeConstraint> getConstraints() {
+        return constraints;
+    }
+
     /*! \brief Attempt to unify the two types
      * \throws UnificationError when constraints cannot be unifierd.
      */
@@ -49,6 +53,7 @@ public:
      * proper type. 
      */
     std::shared_ptr<TipType> inferred(std::shared_ptr<TipType> t);
+
 private:
     static bool isCons(std::shared_ptr<TipType> type);
     static bool isMu(std::shared_ptr<TipType> type);
