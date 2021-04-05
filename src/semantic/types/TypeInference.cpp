@@ -24,6 +24,10 @@ std::shared_ptr<TipType> TypeInference::getInferredType(ASTDeclNode *node) {
   return unifier->inferred(var);
 };
 
+bool TypeInference::isRecursive(ASTDeclNode *node) {
+  return false;
+}
+
 void TypeInference::print(std::ostream &s) {
   s << "\nFunctions : {\n"; 
   auto skip = true;

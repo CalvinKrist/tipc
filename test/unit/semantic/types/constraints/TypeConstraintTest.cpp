@@ -45,11 +45,6 @@ TEST_CASE("Let Polymorphism: function duplication", "[TypeConstraint]") {
     std::unique_ptr<SymbolTable> symbols;
     REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
 
-    std::stringstream outputStream;
-    symbols->print(outputStream);
-    std::string output = outputStream.str();
-    outputStream.clear();
-
     auto analysis = SemanticAnalysis::analyze(ast.get());
     auto types = analysis->getTypeResults();
 
@@ -86,4 +81,55 @@ TEST_CASE("Let Polymorphism: function duplication", "[TypeConstraint]") {
     REQUIRE(yType == "int");
     REQUIRE(zType == "int");
     REQUIRE(yCons != zCons);
+}
+
+TEST_CASE("Let Polymorphism: simple non-recirsive function detection", "[TypeConstraint]") {
+    std::stringstream stream;
+    stream << R"(f1(x) { return x; } f2() { var y; y = f1(10); return y; } f3() { var z; z = {f:1}; z.f = f2(); return z; } )";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    std::unique_ptr<SymbolTable> symbols;
+    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
+
+    auto analysis = SemanticAnalysis::analyze(ast.get());
+    auto types = analysis->getTypeResults();
+
+    for (auto f : symbols->getFunctions()) {
+        REQUIRE(types->isRecursive(f) == false);
+    }
+}
+
+TEST_CASE("Let Polymorphism: simple recirsive function detection", "[TypeConstraint]") {
+    std::stringstream stream;
+    stream << R"(f1(x) { if(x > 0) {x = x + f1(x - 1);} return 0; } )";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    std::unique_ptr<SymbolTable> symbols;
+    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
+
+    auto analysis = SemanticAnalysis::analyze(ast.get());
+    auto types = analysis->getTypeResults();
+
+    for (auto f : symbols->getFunctions()) {
+        REQUIRE(types->isRecursive(f));
+    }
+}
+
+TEST_CASE("Let Polymorphism: complex recirsive function detection", "[TypeConstraint]") {
+    std::stringstream stream;
+    stream << R"(f1(x) { if(x > 0) {x = x + f2(x - 1);} return 0; } f2(x) { if(x > 0) {x = x + f1(x - 1);} return 0; } )";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    std::unique_ptr<SymbolTable> symbols;
+    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
+
+    auto analysis = SemanticAnalysis::analyze(ast.get());
+    auto types = analysis->getTypeResults();
+
+    for (auto f : symbols->getFunctions()) {
+        REQUIRE(types->isRecursive(f));
+    }
 }
