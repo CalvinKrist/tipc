@@ -24,11 +24,17 @@ public:
 
     void accept(TipTypeVisitor *visitor) override;
 
+    std::shared_ptr<TipFunction> copy();
+
 protected:
     std::ostream& print(std::ostream &out) const override;
 
 private:
     std::vector<std::shared_ptr<TipType>> combine(std::vector<std::shared_ptr<TipType>> params, std::shared_ptr<TipType> ret);
+
+
+    std::vector<std::shared_ptr<TipType>> params;
+    std::shared_ptr<TipType> ret;
 
 };
 

@@ -3,7 +3,10 @@
 #include <sstream>
 
 TipFunction::TipFunction(std::vector<std::shared_ptr<TipType>> params, std::shared_ptr<TipType> ret):
-  TipCons(std::move(combine(params, ret))) { }
+  TipCons(std::move(combine(params, ret))) { 
+    this->params = params;
+    this->ret = ret;
+  }
 
 std::vector<std::shared_ptr<TipType>> TipFunction::combine(
         std::vector<std::shared_ptr<TipType>> params,
@@ -61,4 +64,10 @@ void TipFunction::accept(TipTypeVisitor * visitor) {
     }
   }
   visitor->endVisit(this);
+}
+
+std::shared_ptr<TipFunction> TipFunction::copy() {
+    auto p = std::make_shared<TipFunction>(this->params, this->ret);
+
+    return std::move(p);
 }
