@@ -27,6 +27,8 @@ target_sources(types PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/constraints/ConstraintHandler.h
         ${CMAKE_CURRENT_SOURCE_DIR}/constraints/ConstraintUnifier.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/constraints/ConstraintUnifier.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/constraints/FunctionGraph.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/constraints/FunctionGraph.h
         ${CMAKE_CURRENT_SOURCE_DIR}/constraints/TypeConstraint.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/constraints/TypeConstraint.h
         ${CMAKE_CURRENT_SOURCE_DIR}/constraints/TypeConstraintCollectVisitor.cpp

@@ -2,6 +2,7 @@
 #include "TypeConstraint.h"
 #include "TypeConstraintCollectVisitor.h"
 #include "Unifier.h"
+#include "FunctionGraph.h"
 #include <memory>
 
 /*
@@ -10,6 +11,7 @@
  * can be subsequently queried.
  */
 std::unique_ptr<TypeInference> TypeInference::check(ASTProgram* ast, SymbolTable* symbols) {
+  FunctionGraphCreator(ast).print();
   TypeConstraintCollectVisitor visitor(symbols);
   ast->accept(&visitor);
 
