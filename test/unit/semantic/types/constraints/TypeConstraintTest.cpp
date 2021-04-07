@@ -36,58 +36,6 @@ std::string constraintToString(TypeConstraint cons) {
     return ss.str();
 }
 
-TEST_CASE("Let Polymorphism: function duplication", "[TypeConstraint]") {
-    std::stringstream stream;
-    stream << R"(f1() { var x; x=0; return x; } f2() { var y, z; y=f1(); z=f1(); return 0;} )";
-
-    auto ast = ASTHelper::build_ast(stream);
-
-    std::unique_ptr<SymbolTable> symbols;
-    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
-
-    auto analysis = SemanticAnalysis::analyze(ast.get());
-    auto types = analysis->getTypeResults();
-
-    std::stringstream ss;
-    ss << types;
-    auto s = ss.str();
-    std::cout << "Types v1: " << s << std::endl;
-
-    std::string yCons, zCons;
-
-    auto constraints = types->unifier->getConstraints();
-    for(auto c : constraints) {
-        auto conStr = constraintToString(c);
-        if(conStr.find("[[y") != std::string::npos)
-            yCons = conStr;
-        else if(conStr.find("[[z") != std::string::npos)
-            zCons = conStr;
-    }
-
-    yCons = yCons.substr(yCons.find("[[f"));
-    yCons = yCons.substr(0, yCons.find("@"));
-    zCons = zCons.substr(zCons.find("[[f"));
-    zCons = zCons.substr(0, zCons.find("@"));
-
-    std::stringstream ySS, zSS;
-    std::string yType, zType;
-
-    for (auto f : symbols->getFunctions()) {
-        for (auto l : symbols->getLocals(f)) {
-            if(l->getName() == "y")
-                ySS << *(types->getInferredType(l));
-            else if(l->getName() == "z")
-                zSS << *(types->getInferredType(l));
-        }
-    }
-    yType = ySS.str();
-    zType = zSS.str();
-
-    REQUIRE(yType == "int");
-    REQUIRE(zType == "int");
-    REQUIRE(yCons != zCons);
-}
-
 TEST_CASE("Let Polymorphism: variable typing", "[TypeConstraint]") {
     std::stringstream stream;
     stream << R"(id(a) { return a; } f2() { var x, y, z; x = id(0); y = id(0); z = {f : 1}; z = id(z); return 0;} )";

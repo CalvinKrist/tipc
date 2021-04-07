@@ -81,7 +81,7 @@ void Unifier::solve() {
 void Unifier::solve(std::vector<TypeConstraint> constraints) {
 
     // Track newly discovered functions that need to get added to the map at the end
-    std::map<std::string, std::shared_ptr<TipFunction>> newFunctions;
+    std::map<std::string, std::shared_ptr<TipType>> newFunctions;
 
     std::cout << "Processing " << constraints.size() << " constraints." << std::endl;
     for(TypeConstraint &constraint: constraints) {
@@ -95,7 +95,7 @@ void Unifier::solve(std::vector<TypeConstraint> constraints) {
           // mark the function as new and otherwise solve it
           if( funcMap.find(id) == funcMap.end() ) {
             std::cout << "Marking new function." << std::endl;
-            newFunctions[id] = std::shared_ptr<TipFunction>(funcType);
+            newFunctions[id] = constraint.rhs;
             unify(constraint.lhs, constraint.rhs);
           } else {
             std::cout << "Using old function." << std::endl;
@@ -110,11 +110,9 @@ void Unifier::solve(std::vector<TypeConstraint> constraints) {
     std::cout << "Updating function map." << std::endl;
     // Add new functions to the function map
     for(auto it = newFunctions.begin(); it != newFunctions.end(); it++) {
-      //if(dynamic_cast<TipFunction*>(unionFind->find(it->second).get())) {
         auto t = inferred(it->second);
         std::cout << "Adding " << it->first << " = " << *t << std::endl;
         funcMap.insert(std::make_pair(it->first, t));
-      //} 
     }
 }
  

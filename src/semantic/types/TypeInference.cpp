@@ -26,7 +26,6 @@ std::unique_ptr<TypeInference> TypeInference::check(ASTProgram* ast, SymbolTable
     unifier->solve(visitor.getCollectedConstraints());
   }
 
-  std::stringstream ss;
   auto r = std::make_unique<TypeInference>(symbols, std::move(unifier));
 
   std::cout << "\nFunctions : {\n"; 
