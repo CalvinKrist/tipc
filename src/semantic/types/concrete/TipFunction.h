@@ -30,5 +30,8 @@ protected:
 private:
     std::vector<std::shared_ptr<TipType>> combine(std::vector<std::shared_ptr<TipType>> params, std::shared_ptr<TipType> ret);
 
-};
 
+    std::vector<std::shared_ptr<TipType>> params;
+    std::shared_ptr<TipType> ret;
+
+};

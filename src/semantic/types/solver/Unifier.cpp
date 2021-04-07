@@ -10,6 +10,7 @@
 #include <iostream>
 #include <sstream>
 #include <utility>
+#include <map>
 
 /*
  * This code makes use of the dangerous combination of smart pointers and
@@ -67,12 +68,54 @@ Unifier::Unifier(std::vector<TypeConstraint> constrs) : constraints(std::move(co
     unionFind = std::make_unique<UnionFind>(types);
 }
 
-void Unifier::solve() {
-    for(TypeConstraint &constraint: constraints) {
-        unify(constraint.lhs, constraint.rhs);
-    }
+std::string consToStr(TypeConstraint cons) {
+  std::stringstream ss;
+  ss << cons;
+  return ss.str();
 }
 
+void Unifier::solve() {
+    solve(this->constraints);
+}
+
+void Unifier::solve(std::vector<TypeConstraint> constraints) {
+
+    // Track newly discovered functions that need to get added to the map at the end
+    std::map<std::string, std::shared_ptr<TipType>> newFunctions;
+
+    std::cout << "Processing " << constraints.size() << " constraints." << std::endl;
+    for(TypeConstraint &constraint: constraints) {
+        std::cout << "Processing constraint  " << constraint << std::endl;
+        if(auto funcType = dynamic_cast<TipFunction*>(constraint.rhs.get())) {
+
+          auto conStr = consToStr(constraint);
+          std::string id = conStr.substr(0, conStr.find("="));
+
+          // If the function has not already been solved,
+          // mark the function as new and otherwise solve it
+          if( funcMap.find(id) == funcMap.end() ) {
+            std::cout << "Marking new function." << std::endl;
+            newFunctions[id] = constraint.rhs;
+            unify(constraint.lhs, constraint.rhs);
+          } else {
+            std::cout << "Using old function." << std::endl;
+            auto copy = Copier::copy(funcMap[id]);
+            unify(constraint.lhs, copy);
+          }
+          
+        } else 
+          unify(constraint.lhs, constraint.rhs);
+    }
+
+    std::cout << "Updating function map." << std::endl;
+    // Add new functions to the function map
+    for(auto it = newFunctions.begin(); it != newFunctions.end(); it++) {
+        auto t = inferred(it->second);
+        std::cout << "Adding " << it->first << " = " << *t << std::endl;
+        funcMap.insert(std::make_pair(it->first, t));
+    }
+}
+ 
 /*! \fn unify
  *  \brief Attempts to unify the two type terms. Throws a UnificationError on failure.
  *
@@ -267,4 +310,3 @@ bool Unifier::isMu(std::shared_ptr<TipType> type) {
 bool Unifier::isAlpha(std::shared_ptr<TipType> type) {
     return std::dynamic_pointer_cast<TipAlpha>(type) != nullptr;
 }
-

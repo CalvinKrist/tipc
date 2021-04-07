@@ -4,6 +4,7 @@
 #include "TipVar.h"
 #include "TypeConstraint.h"
 #include "UnionFind.h"
+#include "TipFunction.h"
 #include <set>
 #include <vector>
 
@@ -32,6 +33,10 @@ public:
      */
     ~Unifier() = default;
 
+    std::vector<TypeConstraint> getConstraints() {
+        return constraints;
+    }
+
     /*! \brief Attempt to unify the two types
      * \throws UnificationError when constraints cannot be unifierd.
      */
@@ -42,6 +47,8 @@ public:
      */
     void solve();
 
+    void solve(std::vector<TypeConstraint> constraints);
+
     /*! \brief Returns the inferred type for a given type.
      * \pre The unifier has computed a solution.
      * This will close the type by replacing any variables that
@@ -49,6 +56,7 @@ public:
      * proper type. 
      */
     std::shared_ptr<TipType> inferred(std::shared_ptr<TipType> t);
+
 private:
     static bool isCons(std::shared_ptr<TipType> type);
     static bool isMu(std::shared_ptr<TipType> type);
@@ -60,5 +68,7 @@ private:
 
     std::vector<TypeConstraint> constraints;
     std::unique_ptr<UnionFind> unionFind;
+
+    std::map<std::string, std::shared_ptr<TipType>> funcMap;
 };
 
