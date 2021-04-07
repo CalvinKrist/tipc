@@ -24,8 +24,6 @@ public:
 
     void accept(TipTypeVisitor *visitor) override;
 
-    std::shared_ptr<TipFunction> copy();
-
 protected:
     std::ostream& print(std::ostream &out) const override;
 
@@ -37,4 +35,3 @@ private:
     std::shared_ptr<TipType> ret;
 
 };
-

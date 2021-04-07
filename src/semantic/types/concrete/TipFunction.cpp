@@ -65,9 +65,3 @@ void TipFunction::accept(TipTypeVisitor * visitor) {
   }
   visitor->endVisit(this);
 }
-
-std::shared_ptr<TipFunction> TipFunction::copy() {
-    auto p = std::make_shared<TipFunction>(this->params, this->ret);
-
-    return std::move(p);
-}

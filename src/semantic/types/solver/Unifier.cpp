@@ -99,10 +99,8 @@ void Unifier::solve(std::vector<TypeConstraint> constraints) {
             unify(constraint.lhs, constraint.rhs);
           } else {
             std::cout << "Using old function." << std::endl;
-            if(auto f = dynamic_cast<TipFunction*>(funcMap[id].get())) {
-              std::cout << "Cast old function succesfully." << std::endl;
-              unify(constraint.lhs, f->copy());
-            }
+            auto copy = Copier::copy(funcMap[id]);
+            unify(constraint.lhs, copy);
           }
           
         } else 
@@ -112,11 +110,11 @@ void Unifier::solve(std::vector<TypeConstraint> constraints) {
     std::cout << "Updating function map." << std::endl;
     // Add new functions to the function map
     for(auto it = newFunctions.begin(); it != newFunctions.end(); it++) {
-      if(dynamic_cast<TipFunction*>(unionFind->find(it->second).get())) {
+      //if(dynamic_cast<TipFunction*>(unionFind->find(it->second).get())) {
         auto t = inferred(it->second);
         std::cout << "Adding " << it->first << " = " << *t << std::endl;
         funcMap.insert(std::make_pair(it->first, t));
-      } 
+      //} 
     }
 }
  

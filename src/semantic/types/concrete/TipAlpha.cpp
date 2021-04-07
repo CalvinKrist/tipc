@@ -36,4 +36,3 @@ void TipAlpha::accept(TipTypeVisitor * visitor) {
   visitor->visit(this);
   visitor->endVisit(this);
 }
-
