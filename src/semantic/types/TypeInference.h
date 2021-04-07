@@ -30,8 +30,6 @@ public:
    */
   static std::unique_ptr<TypeInference> check(ASTProgram* ast, SymbolTable* symbols); 
 
-  bool isRecursive(ASTDeclNode *node);
-
   /*! \fn getInferredType
    *  \brief Returns the type expression inferred for the given ASTDeclNode.
    *

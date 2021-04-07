@@ -6,6 +6,7 @@
 #include "ASTHelper.h"
 #include <vector>
 #include <sstream>
+#include "FunctionGraph.h"
 
 TEST_CASE("TypeConstraint: Constraints are compared term-wise", "[TypeConstraint]") {
     std::vector<std::shared_ptr<TipType>> args;
@@ -107,8 +108,10 @@ TEST_CASE("Let Polymorphism: simple non-recirsive function detection", "[TypeCon
     auto analysis = SemanticAnalysis::analyze(ast.get());
     auto types = analysis->getTypeResults();
 
-    for (auto f : symbols->getFunctions()) {
-        REQUIRE(types->isRecursive(f) == false);
+    FunctionGraphCreator analyzer{ ast.get() };
+
+    for (auto f : ast->getFunctions()) {
+        REQUIRE(analyzer.isFunctionRecursive(f) == false);
     }
 }
 
@@ -124,8 +127,10 @@ TEST_CASE("Let Polymorphism: simple recirsive function detection", "[TypeConstra
     auto analysis = SemanticAnalysis::analyze(ast.get());
     auto types = analysis->getTypeResults();
 
-    for (auto f : symbols->getFunctions()) {
-        REQUIRE(types->isRecursive(f));
+    FunctionGraphCreator analyzer{ ast.get() };
+
+    for (auto f : ast->getFunctions()) {
+        REQUIRE(analyzer.isFunctionRecursive(f) == false);
     }
 }
 
@@ -141,7 +146,9 @@ TEST_CASE("Let Polymorphism: complex recirsive function detection", "[TypeConstr
     auto analysis = SemanticAnalysis::analyze(ast.get());
     auto types = analysis->getTypeResults();
 
-    for (auto f : symbols->getFunctions()) {
-        REQUIRE(types->isRecursive(f));
+    FunctionGraphCreator analyzer{ ast.get() };
+
+    for (auto f : ast->getFunctions()) {
+        REQUIRE(analyzer.isFunctionRecursive(f) == false);
     }
 }
