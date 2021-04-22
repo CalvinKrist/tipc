@@ -101,6 +101,18 @@ void Unifier::solve(std::vector<TypeConstraint> constraints) {
             std::cout << "Using old function." << std::endl;
             auto copy = Copier::copy(funcMap[id]);
             unify(constraint.lhs, copy);
+
+            /*if(auto copyFuncType = dynamic_cast<TipFunction*>(copy.get())) {
+              auto funcParams = funcType->getParams();
+              auto copyParams = copyFuncType->getParams();
+              for(int i = 0; i < funcParams.size(); i++) {
+                TypeConstraint cons(copyParams[i], funcParams[i]);
+                std::cout << "Generating constriant " << cons << std::endl;
+                unify(Copier::copy(copyParams[i]), funcParams[i]);
+              }
+            } else {
+              std::cout << "FAILED TO CAST COPY TO FUNCTION" << std::endl;
+            }*/
           }
           
         } else 

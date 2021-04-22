@@ -1,7 +1,9 @@
 #include "Substituter.h"
 
 #include <iterator>
+#include <iostream>
 #include <algorithm>
+#include <string> 
 
 std::shared_ptr<TipType> Substituter::substitute(
         TipType* t, TipVar* v, std::shared_ptr<TipType> s) {
