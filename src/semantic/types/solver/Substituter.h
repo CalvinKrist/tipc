@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "TipTypeVisitor.h"
 
 /*! \brief Produces a type with designated variable substitutions.
@@ -46,13 +48,28 @@ public:
  * This subtype of the Substituter overrides the behavior for TipVar
  * and TipAlpha to just copy that node rather than perform a substitution.
  */
-class Copier: public Substituter {
+class Copier : public Substituter {
 public:
-  Copier() = default;
+	Copier() = default;
 
-  static std::shared_ptr<TipType> copy(std::shared_ptr<TipType> s);
+	static std::shared_ptr<TipType> copy(std::shared_ptr<TipType> s);
 
-  virtual void endVisit(TipAlpha * element) override;
-  virtual void endVisit(TipVar * element) override;
+	virtual void endVisit(TipAlpha* element) override;
+	virtual void endVisit(TipVar* element) override;
+};
+
+/*! \brief Makes a deep copy of a TipType
+ */
+class DeepCopier : public Copier {
+private:
+	static int substitution_id;
+	std::map<TipAlpha, std::shared_ptr<TipAlpha>> replacements;
+
+public:
+	DeepCopier() = default;
+
+	static std::shared_ptr<TipType> copy(std::shared_ptr<TipType> s);
+
+	virtual void endVisit(TipAlpha* element) override;
 };
 

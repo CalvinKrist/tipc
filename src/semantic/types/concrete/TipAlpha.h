@@ -28,6 +28,7 @@ public:
 
     bool operator==(const TipType& other) const override;
     bool operator!=(const TipType& other) const override;
+    bool operator<(const TipAlpha& other) const;
 
     void accept(TipTypeVisitor *visitor) override;
 

@@ -109,4 +109,22 @@ void Copier::endVisit(TipAlpha * element) {
   visitedTypes.push_back(std::make_shared<TipAlpha>(element->getNode(), element->getName()));
 }
 
+int DeepCopier::substitution_id = 0;
 
+std::shared_ptr<TipType> DeepCopier::copy(std::shared_ptr<TipType> t){
+    DeepCopier visitor;
+    t->accept(&visitor);
+    return visitor.getResult();
+}
+
+void DeepCopier::endVisit(TipAlpha* element){
+    if(replacements.find(*element) != replacements.end()){
+        auto found{ replacements.at(*element) };
+        visitedTypes.push_back(std::make_shared<TipAlpha>(found->getNode(), found->getName()));
+    } else{
+        auto copy{ std::make_shared<TipAlpha>(element->getNode(),
+                                              element->getName() + "-" + std::to_string(substitution_id++)) };
+        replacements.emplace(*element, copy);
+        visitedTypes.push_back(copy);
+    }
+}

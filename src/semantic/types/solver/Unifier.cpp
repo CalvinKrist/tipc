@@ -78,53 +78,32 @@ void Unifier::solve() {
     solve(this->constraints);
 }
 
-void Unifier::solve(std::vector<TypeConstraint> constraints) {
+void Unifier::solve(std::vector<TypeConstraint> constraints){
 
     // Track newly discovered functions that need to get added to the map at the end
     std::map<std::string, std::shared_ptr<TipType>> newFunctions;
 
     std::cout << "Processing " << constraints.size() << " constraints." << std::endl;
-    for(TypeConstraint &constraint: constraints) {
+    for(TypeConstraint& constraint : constraints){
         std::cout << "Processing constraint  " << constraint << std::endl;
-        if(auto funcType = dynamic_cast<TipFunction*>(constraint.rhs.get())) {
+        if(auto funcType = dynamic_cast<TipFunction*>(constraint.rhs.get())){
+            auto conStr = consToStr(constraint);
+            std::string id = conStr.substr(0, conStr.find("="));
 
-          auto conStr = consToStr(constraint);
-          std::string id = conStr.substr(0, conStr.find("="));
-
-          // If the function has not already been solved,
-          // mark the function as new and otherwise solve it
-          if( funcMap.find(id) == funcMap.end() ) {
-            std::cout << "Marking new function." << std::endl;
-            newFunctions[id] = constraint.rhs;
-            unify(constraint.lhs, constraint.rhs);
-          } else {
-            std::cout << "Using old function." << std::endl;
-            auto copy = Copier::copy(funcMap[id]);
-            unify(constraint.lhs, copy);
-
-            /*if(auto copyFuncType = dynamic_cast<TipFunction*>(copy.get())) {
-              auto funcParams = funcType->getParams();
-              auto copyParams = copyFuncType->getParams();
-              for(int i = 0; i < funcParams.size(); i++) {
-                TypeConstraint cons(copyParams[i], funcParams[i]);
-                std::cout << "Generating constriant " << cons << std::endl;
-                unify(Copier::copy(copyParams[i]), funcParams[i]);
-              }
+            if(funcMap.find(id) == funcMap.end()){
+                std::cout << "Marking new function." << std::endl;
+                unify(constraint.lhs, constraint.rhs);
+                funcMap.emplace(id, inferred(constraint.lhs));
             } else {
-              std::cout << "FAILED TO CAST COPY TO FUNCTION" << std::endl;
-            }*/
-          }
-          
-        } else 
-          unify(constraint.lhs, constraint.rhs);
-    }
+                auto copy = DeepCopier::copy(funcMap[id]);
+                std::cout << "substituting unification with " << consToStr(TypeConstraint(copy, constraint.rhs)) << std::endl;
+                std::cout << "Inferred the copy to be " << *copy << std::endl;
+                unify(copy, constraint.rhs);
+            }
 
-    std::cout << "Updating function map." << std::endl;
-    // Add new functions to the function map
-    for(auto it = newFunctions.begin(); it != newFunctions.end(); it++) {
-        auto t = inferred(it->second);
-        std::cout << "Adding " << it->first << " = " << *t << std::endl;
-        funcMap.insert(std::make_pair(it->first, t));
+        } else{
+            unify(constraint.lhs, constraint.rhs);
+        }
     }
 }
  

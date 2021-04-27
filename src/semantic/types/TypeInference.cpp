@@ -15,67 +15,60 @@
 std::unique_ptr<TypeInference> TypeInference::check(ASTProgram* ast, SymbolTable* symbols) {
 
   FunctionGraphCreator analyzer{ ast };
-  if(analyzer.isDAG()){
-    auto queue{ analyzer.inverseTopoSort() };
-    
-    TypeConstraintCollectVisitor visitor(symbols);
-    ast->accept(&visitor);
-    // Create unifier with all constriants so the unionFind is correct
-    auto unifier = std::make_unique<Unifier>(visitor.getCollectedConstraints());
+  auto recursives{ analyzer.getRecursiveFunctions() };
+  auto unifier{ std::make_unique<Unifier>() };
+  TypeConstraintCollectVisitor visitor(symbols);
 
-    while(!queue.empty()) {
-      auto func{ queue.front() };
-      queue.pop();
-      std::cout << "Processing function " << func->getName() << std::endl;
-      visitor = TypeConstraintCollectVisitor(symbols);
+  // Collect contraints from recursive functions
+  for(auto& func : recursives){
       func->accept(&visitor);
-
-      std::cout << "Solving function " << func->getName() << std::endl;
-      // Solve only on the constraints in this single function
-      unifier->solve(visitor.getCollectedConstraints());
-    }
-
-    auto r = std::make_unique<TypeInference>(symbols, std::move(unifier));
-
-    std::cout << "\nFunctions : {\n"; 
-    auto skip = true;
-    for (auto f : symbols->getFunctions()) {
-      if (skip) {
-        skip = false;
-        std::cout << "  " << f->getName() << " : " << r->getInferredType(f);
-        continue;
-      }
-      std::cout << ",\n  " + f->getName() << " : " << r->getInferredType(f); 
-    }
-    std::cout << "\n}\n";
-
-    for (auto f : symbols->getFunctions()) {
-      std::cout << "\nLocals for function " + f->getName() + " : {\n";
-      skip = true;
-      for (auto l : symbols->getLocals(f)) {
-        auto lT = r->getInferredType(l);
-        if (skip) {
-          skip = false;
-          std::cout << "  " << l->getName() << " : " << *lT;
-          continue;
-        }
-        std::cout << ",\n  " + l->getName() << " : " << *lT;
-        std::cout << std::flush;
-      }
-      std::cout << "\n}\n";
-    }
-   
-    return std::move(r);
   }
 
-  // Solve the old way
-  TypeConstraintCollectVisitor visitor(symbols);
-  ast->accept(&visitor);
+  unifier->solve(visitor.getCollectedConstraints());
 
-  auto unifier =  std::make_unique<Unifier>(visitor.getCollectedConstraints());
-  unifier->solve();
- 
-  return std::make_unique<TypeInference>(symbols, std::move(unifier));
+  auto queue{ analyzer.inverseTopoSort() };
+
+  while(!queue.empty()) {
+    auto func{ queue.front() };
+    queue.pop();
+    std::cout << "Processing function " << func->getName() << std::endl;
+    visitor = TypeConstraintCollectVisitor(symbols);
+    func->accept(&visitor);
+    std::cout << "Solving function " << func->getName() << std::endl;
+    unifier->solve(visitor.getCollectedConstraints());
+  }
+
+  auto r = std::make_unique<TypeInference>(symbols, std::move(unifier));
+
+  std::cout << "\nFunctions : {\n";
+  auto skip = true;
+  for(auto f : symbols->getFunctions()){
+      if(skip){
+          skip = false;
+          std::cout << "  " << f->getName() << " : " << r->getInferredType(f);
+          continue;
+      }
+      std::cout << ",\n  " + f->getName() << " : " << r->getInferredType(f);
+  }
+  std::cout << "\n}\n";
+
+  for(auto f : symbols->getFunctions()){
+      std::cout << "\nLocals for function " + f->getName() + " : {\n";
+      skip = true;
+      for(auto l : symbols->getLocals(f)){
+          auto lT = r->getInferredType(l);
+          if(skip){
+              skip = false;
+              std::cout << "  " << l->getName() << " : " << *lT;
+              continue;
+          }
+          std::cout << ",\n  " + l->getName() << " : " << *lT;
+          std::cout << std::flush;
+      }
+      std::cout << "\n}\n";
+  }
+
+  return std::move(r);
 }
 
 std::shared_ptr<TipType> TypeInference::getInferredType(ASTDeclNode *node) {

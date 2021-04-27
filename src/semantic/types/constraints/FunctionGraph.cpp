@@ -65,20 +65,29 @@ bool FunctionGraphCreator::isDAG() const {
 }
 bool FunctionGraphCreator::isFunctionRecursive(ASTFunction* func) const {
     std::set<Node*> visited{};
-    return graph.find(func) != graph.end() && dfsTraverseAsDAG(graph.at(func).get(), visited);
+    return graph.find(func) != graph.end() && !dfsTraverseAsDAG(graph.at(func).get(), visited);
+}
+std::set<ASTFunction*> FunctionGraphCreator::getRecursiveFunctions() const {
+    std::set<ASTFunction*> functions{};
+    for(auto& pair : graph){
+        if(isFunctionRecursive(pair.first)){
+            functions.emplace(pair.first);
+        }
+    }
+    return functions;
 }
 std::queue<ASTFunction*> FunctionGraphCreator::inverseTopoSort(){
-    assert(isDAG());
+    std::set<ASTFunction*> recursives{ getRecursiveFunctions() };
 
-    std::stack<ASTFunction*> stack;
-    std::queue<Node*> nodes;
+    std::stack<ASTFunction*> stack{};
+    std::queue<Node*> nodes{};
     for(auto& pair : graph){
         if(pair.second->callsiteFuncs.empty()){
             nodes.emplace(pair.second.get());
         }
     }
 
-    std::set<Node*> visited;
+    std::set<Node*> visited{};
     while(!nodes.empty()){
         auto& top = nodes.front();
         stack.push(top->associatedFunction);
@@ -91,7 +100,7 @@ std::queue<ASTFunction*> FunctionGraphCreator::inverseTopoSort(){
         nodes.pop();
     }
 
-    std::queue<ASTFunction*> queue;
+    std::queue<ASTFunction*> queue{};
     while(!stack.empty()){
         queue.emplace(stack.top());
         stack.pop();

@@ -39,6 +39,7 @@ public:
     FunctionGraphCreator(ASTProgram* program);
     bool isDAG() const;
     bool isFunctionRecursive(ASTFunction* func) const;
+    std::set<ASTFunction*> getRecursiveFunctions() const;
     std::queue<ASTFunction*> inverseTopoSort();
     void print();
 };

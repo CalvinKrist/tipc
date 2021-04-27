@@ -15,20 +15,24 @@ std::ostream &TipAlpha::print(std::ostream &out) const {
     return out;
 }
 
-bool TipAlpha::operator==(const TipType &other) const {
-    auto otherTipAlpha = dynamic_cast<const TipAlpha *>(&other);
-    if(!otherTipAlpha) {
+bool TipAlpha::operator==(const TipType& other) const{
+    auto otherTipAlpha = dynamic_cast<const TipAlpha*>(&other);
+    if(!otherTipAlpha){
         return false;
     }
 
     return node == otherTipAlpha->getNode() && name == otherTipAlpha->getName();
 }
 
+bool TipAlpha::operator<(const TipAlpha& other) const{
+    return std::make_pair(node, name) < std::make_pair(other.getNode(), other.getName());
+}
+
 bool TipAlpha::operator!=(const TipType &other) const {
     return !(*this == other);
 }
 
-std::string const & TipAlpha::getName() const {
+std::string const& TipAlpha::getName() const{
     return name;
 }
 
