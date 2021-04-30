@@ -6,7 +6,9 @@
 #include "ASTHelper.h"
 #include <vector>
 #include <sstream>
+#include <queue>
 #include "FunctionGraph.h"
+#include "TypeConstraintCollectVisitor.h"
 
 TEST_CASE("TypeConstraint: Constraints are compared term-wise", "[TypeConstraint]") {
     std::vector<std::shared_ptr<TipType>> args;
@@ -37,9 +39,153 @@ std::string constraintToString(TypeConstraint cons) {
     return ss.str();
 }
 
-TEST_CASE("Let Polymorphism: variable typing", "[TypeConstraint]") {
+TEST_CASE("T1: FlowAnalysis", "[FlowAnalysis]") {
     std::stringstream stream;
-    stream << R"(id(a) { return a; } f2() { var x, y, z; x = id(0); y = id(0); z = {f : 1}; z = id(z); return 0;} )";
+    stream << R"(rec(){ return rec(); } nonRec() { return 0; })";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    FunctionGraphCreator analyzer{ ast.get() };
+    auto recursives{ analyzer.getRecursiveFunctions() };
+
+    for(auto func : recursives)
+        REQUIRE(func->getName() == "rec");
+}
+
+TEST_CASE("T2: FlowAnalysis", "[FlowAnalysis]") {
+    std::stringstream stream;
+    stream << R"(nonRec(){ return 0; } rec() { var x; x = nonRec(); return rec(); })";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    FunctionGraphCreator analyzer{ ast.get() };
+    auto recursives{ analyzer.getRecursiveFunctions() };
+
+    bool recCovered = false;
+    bool nonRecCovered = false;
+
+    for(auto func : recursives) {
+        if(func->getName() == "rec")
+            recCovered = true;
+        else if(func->getName() == "nonRec")
+            nonRecCovered = true;
+    }
+
+    REQUIRE(recCovered);
+    REQUIRE(nonRecCovered);
+}
+
+
+TEST_CASE("T3: FlowAnalysis", "[FlowAnalysis]") {
+    std::stringstream stream;
+    stream << R"(rec1() { return rec1(); } rec2() { return rec2(); })";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    FunctionGraphCreator analyzer{ ast.get() };
+    auto recursives{ analyzer.getRecursiveFunctions() };
+
+    bool rec1Covered = false;
+    bool rec2Covered = false;
+
+    for(auto func : recursives)
+        if(func->getName() == "rec1")
+            rec1Covered = true;
+        else if(func->getName() == "rec2")
+            rec2Covered = true;
+
+    REQUIRE(rec1Covered);
+    REQUIRE(rec2Covered);
+}
+
+TEST_CASE("T4: FlowAnalysis", "[FlowAnalysis]") {
+    std::stringstream stream;
+    stream << R"(rec(x){ if(x != 0) {x = rec(x - 1); } return x;} )";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    FunctionGraphCreator analyzer{ ast.get() };
+    auto recursives{ analyzer.getRecursiveFunctions() };
+
+    bool visited = recursives.size() == 1;
+    REQUIRE(visited);
+}
+
+TEST_CASE("T5: FlowAnalysis", "[FlowAnalysis]") {
+    std::stringstream stream;
+    stream << R"(d() {return 0;} b() {var x; x = d(); return c();} c() {return b();} a() {return b();})";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    FunctionGraphCreator analyzer{ ast.get() };
+    auto recursives{ analyzer.getRecursiveFunctions() };
+
+    bool bCovered = false;
+    bool cCovered = false;
+    bool dCovered = false;
+    bool aCovered = false;
+
+    for(auto func : recursives)
+        if(func->getName() == "b")
+            bCovered = true;
+        else if(func->getName() == "c")
+            cCovered = true;
+        else if(func->getName() == "d")
+            dCovered = true;
+        else if(func->getName() == "a")
+            aCovered = true;
+
+    REQUIRE(bCovered);
+    REQUIRE(cCovered);
+    REQUIRE(dCovered);
+    REQUIRE(!aCovered);
+}
+
+TEST_CASE("T6: FlowAnalysis", "[FlowAnalysis]") {
+    std::stringstream stream;
+    stream << R"(c() {return 0;} b() {return c();} a() {return b();})";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    FunctionGraphCreator analyzer{ ast.get() };
+    auto q1{ analyzer.inverseTopoSort() };
+    std::queue<std::string> q2;
+    q2.push("c");
+    q2.push("b");
+    q2.push("a");
+
+    while(!q1.empty()) {
+        auto val = q1.front();
+        q1.pop();
+
+        auto val2 =q2.front();
+        q2.pop();
+
+        REQUIRE(val->getName() == val2);
+    }
+}
+
+TEST_CASE("T7: FlowAnalysis", "[FlowAnalysis]") {
+    std::stringstream stream;
+    stream << R"(d() {return 0;} c() {return d();} b() {return d();} a() { var x; x = b(); return c();})";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    FunctionGraphCreator analyzer{ ast.get() };
+    auto queue{ analyzer.inverseTopoSort() };
+    
+    REQUIRE(queue.front()->getName() == "d");
+    REQUIRE(queue.back()->getName() == "a");
+
+    queue.pop();
+    REQUIRE((queue.front()->getName() == "b" || queue.front()->getName() == "c"));
+    queue.pop();
+    REQUIRE((queue.front()->getName() == "b" || queue.front()->getName() == "c"));
+}
+
+TEST_CASE("T8: Let-Polymorphism", "[Let-Polymorphism]") {
+    std::stringstream stream;
+    stream << R"(id(a) { return a; } )";
 
     auto ast = ASTHelper::build_ast(stream);
 
@@ -49,106 +195,84 @@ TEST_CASE("Let Polymorphism: variable typing", "[TypeConstraint]") {
     auto analysis = SemanticAnalysis::analyze(ast.get());
     auto types = analysis->getTypeResults();
 
-    std::stringstream ySS, xSS, zSS;
-    std::string yType, xType, zType;
+    auto typeSignatures = types->unifier->getTypeSignatures();
+
+    std::stringstream ss;
+    for (auto const &pair: typeSignatures) 
+        ss << *(pair.second.get());
+
+    
+    std::string funcType;
+    funcType = ss.str();
+
+    REQUIRE(funcType == "(α<a>) -> α<a>");
+}
+
+TEST_CASE("T9: Let-Polymorphism", "[Let-Polymorphism]") {
+    std::stringstream stream;
+    stream << R"(id(a) { return a; } f2() { var x, z; x = id(0); z = {f : 1}; z = id(z); return 0;} )";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    std::unique_ptr<SymbolTable> symbols;
+    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
+
+    auto analysis = SemanticAnalysis::analyze(ast.get());
+    auto types = analysis->getTypeResults();
+
+    std::stringstream xSS, zSS;
+    std::string xType, zType;
 
     for (auto f : symbols->getFunctions()) {
         for (auto l : symbols->getLocals(f)) {
-            if(l->getName() == "y")
-                ySS << *(types->getInferredType(l));
-            else if(l->getName() == "x")
+            if(l->getName() == "x")
                 xSS << *(types->getInferredType(l));
             else if(l->getName() == "z")
                 zSS << *(types->getInferredType(l));
         }
     }
-    yType = ySS.str();
+
     xType = xSS.str();
     zType = zSS.str();
 
-    REQUIRE(yType == "int");
     REQUIRE(xType == "int");
     REQUIRE(zType == "{f:int}");
 }
 
-TEST_CASE("Let Polymorphism: function typing", "[TypeConstraint]") {
+TEST_CASE("T10: Let-Polymorphism", "[Let-Polymorphism]") {
     std::stringstream stream;
-    stream << R"(f() { return 0; } g(x) { return x; })";
+    stream << R"( base() {return 0;} r1(y) { var x; if(y == 0) {x = base();} else {x = r1(x - 1); } return x;} )";
 
     auto ast = ASTHelper::build_ast(stream);
 
     std::unique_ptr<SymbolTable> symbols;
     REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
 
-    auto analysis = SemanticAnalysis::analyze(ast.get());
-    auto types = analysis->getTypeResults();
+    auto unifier{ std::make_unique<Unifier>() };
+    TypeConstraintCollectVisitor visitor(symbols.get());
 
-    std::stringstream ss;
-    std::string res;
+    ast->accept(&visitor);
 
-    types->print(ss);
-    res = ss.str();
+    unifier->solve(visitor.getCollectedConstraints());
 
-    std::size_t found = res.find(": () -> int");
-    REQUIRE(found!=std::string::npos);
+    auto typeSignatures = unifier->getTypeSignatures();
 
-    found = res.find(": (α<x>) -> α<x>");
-    REQUIRE(found!=std::string::npos);
-}
+    std::stringstream ss1, ss2;
+    bool first = true;
+    for (auto const &pair: typeSignatures) 
+        if(first) {
+            ss1 << *(pair.second.get());
+            first = false;
+        }
+        else {
+            ss2 << *(pair.second.get());
+        }
 
-TEST_CASE("Let Polymorphism: simple non-recirsive function detection", "[TypeConstraint]") {
-    std::stringstream stream;
-    stream << R"(f1(x) { return x; } f2() { var y; y = f1(10); return y; } f3() { var z; z = {f:1}; z.f = f2(); return z; } )";
+    
+    std::string f1Type, f2Type;
+    f1Type = ss1.str();
+    f2Type = ss2.str();
 
-    auto ast = ASTHelper::build_ast(stream);
-
-    std::unique_ptr<SymbolTable> symbols;
-    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
-
-    auto analysis = SemanticAnalysis::analyze(ast.get());
-    auto types = analysis->getTypeResults();
-
-    FunctionGraphCreator analyzer{ ast.get() };
-
-    for (auto f : ast->getFunctions()) {
-        REQUIRE(analyzer.isFunctionRecursive(f) == false);
-    }
-}
-
-TEST_CASE("Let Polymorphism: simple recirsive function detection", "[TypeConstraint]") {
-    std::stringstream stream;
-    stream << R"(f1(x) { if(x > 0) {x = x + f1(x - 1);} return 0; } )";
-
-    auto ast = ASTHelper::build_ast(stream);
-
-    std::unique_ptr<SymbolTable> symbols;
-    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
-
-    auto analysis = SemanticAnalysis::analyze(ast.get());
-    auto types = analysis->getTypeResults();
-
-    FunctionGraphCreator analyzer{ ast.get() };
-
-    for (auto f : ast->getFunctions()) {
-        REQUIRE(analyzer.isFunctionRecursive(f) == false);
-    }
-}
-
-TEST_CASE("Let Polymorphism: complex recirsive function detection", "[TypeConstraint]") {
-    std::stringstream stream;
-    stream << R"(f1(x) { if(x > 0) {x = x + f2(x - 1);} return 0; } f2(x) { if(x > 0) {x = x + f1(x - 1);} return 0; } )";
-
-    auto ast = ASTHelper::build_ast(stream);
-
-    std::unique_ptr<SymbolTable> symbols;
-    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
-
-    auto analysis = SemanticAnalysis::analyze(ast.get());
-    auto types = analysis->getTypeResults();
-
-    FunctionGraphCreator analyzer{ ast.get() };
-
-    for (auto f : ast->getFunctions()) {
-        REQUIRE(analyzer.isFunctionRecursive(f) == false);
-    }
+    REQUIRE(f1Type == "() -> int(int)");
+    REQUIRE(f2Type == "(int) -> int(int)");
 }

@@ -14,10 +14,11 @@
  */
 std::unique_ptr<TypeInference> TypeInference::check(ASTProgram* ast, SymbolTable* symbols) {
 
-  FunctionGraphCreator analyzer{ ast };
-  auto recursives{ analyzer.getRecursiveFunctions() };
   auto unifier{ std::make_unique<Unifier>() };
   TypeConstraintCollectVisitor visitor(symbols);
+
+  FunctionGraphCreator analyzer{ ast };
+  auto recursives{ analyzer.getRecursiveFunctions() };
 
   // Collect contraints from recursive functions
   for(auto& func : recursives){
@@ -31,43 +32,12 @@ std::unique_ptr<TypeInference> TypeInference::check(ASTProgram* ast, SymbolTable
   while(!queue.empty()) {
     auto func{ queue.front() };
     queue.pop();
-    std::cout << "Processing function " << func->getName() << std::endl;
     visitor = TypeConstraintCollectVisitor(symbols);
     func->accept(&visitor);
-    std::cout << "Solving function " << func->getName() << std::endl;
-    unifier->solve(visitor.getCollectedConstraints());
+    unifier->solvePolymorphic(visitor.getCollectedConstraints());
   }
 
   auto r = std::make_unique<TypeInference>(symbols, std::move(unifier));
-
-  std::cout << "\nFunctions : {\n";
-  auto skip = true;
-  for(auto f : symbols->getFunctions()){
-      if(skip){
-          skip = false;
-          std::cout << "  " << f->getName() << " : " << r->getInferredType(f);
-          continue;
-      }
-      std::cout << ",\n  " + f->getName() << " : " << r->getInferredType(f);
-  }
-  std::cout << "\n}\n";
-
-  for(auto f : symbols->getFunctions()){
-      std::cout << "\nLocals for function " + f->getName() + " : {\n";
-      skip = true;
-      for(auto l : symbols->getLocals(f)){
-          auto lT = r->getInferredType(l);
-          if(skip){
-              skip = false;
-              std::cout << "  " << l->getName() << " : " << *lT;
-              continue;
-          }
-          std::cout << ",\n  " + l->getName() << " : " << *lT;
-          std::cout << std::flush;
-      }
-      std::cout << "\n}\n";
-  }
-
   return std::move(r);
 }
 

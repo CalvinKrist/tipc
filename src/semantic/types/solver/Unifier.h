@@ -48,6 +48,7 @@ public:
     void solve();
 
     void solve(std::vector<TypeConstraint> constraints);
+    void solvePolymorphic(std::vector<TypeConstraint> constraints);
 
     /*! \brief Returns the inferred type for a given type.
      * \pre The unifier has computed a solution.
@@ -56,6 +57,8 @@ public:
      * proper type. 
      */
     std::shared_ptr<TipType> inferred(std::shared_ptr<TipType> t);
+
+    std::map<std::string, std::shared_ptr<TipType>> getTypeSignatures();
 
 private:
     static bool isCons(std::shared_ptr<TipType> type);

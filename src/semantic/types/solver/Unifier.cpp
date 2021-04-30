@@ -79,25 +79,27 @@ void Unifier::solve() {
 }
 
 void Unifier::solve(std::vector<TypeConstraint> constraints){
+    for(TypeConstraint& constraint : constraints)
+            unify(constraint.lhs, constraint.rhs);
+}
 
-    // Track newly discovered functions that need to get added to the map at the end
-    std::map<std::string, std::shared_ptr<TipType>> newFunctions;
+void Unifier::solvePolymorphic(std::vector<TypeConstraint> constraints){
 
-    std::cout << "Processing " << constraints.size() << " constraints." << std::endl;
     for(TypeConstraint& constraint : constraints){
-        std::cout << "Processing constraint  " << constraint << std::endl;
+
         if(auto funcType = dynamic_cast<TipFunction*>(constraint.rhs.get())){
             auto conStr = consToStr(constraint);
             std::string id = conStr.substr(0, conStr.find("="));
 
-            if(funcMap.find(id) == funcMap.end()){
-                std::cout << "Marking new function." << std::endl;
+            std::cout << conStr << std::endl;
+
+            if(funcMap.find(id) == funcMap.end()) {
+                // Save function to map
                 unify(constraint.lhs, constraint.rhs);
                 funcMap.emplace(id, inferred(constraint.lhs));
             } else {
+                // Use saved function
                 auto copy = DeepCopier::copy(funcMap[id]);
-                std::cout << "substituting unification with " << consToStr(TypeConstraint(copy, constraint.rhs)) << std::endl;
-                std::cout << "Inferred the copy to be " << *copy << std::endl;
                 unify(copy, constraint.rhs);
             }
 
@@ -106,7 +108,7 @@ void Unifier::solve(std::vector<TypeConstraint> constraints){
         }
     }
 }
- 
+
 /*! \fn unify
  *  \brief Attempts to unify the two type terms. Throws a UnificationError on failure.
  *
@@ -300,4 +302,8 @@ bool Unifier::isMu(std::shared_ptr<TipType> type) {
 
 bool Unifier::isAlpha(std::shared_ptr<TipType> type) {
     return std::dynamic_pointer_cast<TipAlpha>(type) != nullptr;
+}
+
+std::map<std::string, std::shared_ptr<TipType>> Unifier::getTypeSignatures() {
+  return this->funcMap;
 }
