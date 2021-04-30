@@ -276,3 +276,73 @@ TEST_CASE("T10: Let-Polymorphism", "[Let-Polymorphism]") {
     REQUIRE(f1Type == "() -> int(int)");
     REQUIRE(f2Type == "(int) -> int(int)");
 }
+
+TEST_CASE("T11: Integration", "[Integration]") {
+    std::stringstream stream;
+    stream << R"(ret(n) {if(n == 0){n = ret(n - 1);} return n;} id(a) { var b; b = ret(1); return a; } f2() { var x, z; x = id(0); z = {f : 1}; z = id(z); return 0;} )";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    std::unique_ptr<SymbolTable> symbols;
+    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
+
+    auto analysis = SemanticAnalysis::analyze(ast.get());
+    auto types = analysis->getTypeResults();
+
+    std::stringstream xSS, zSS;
+    std::string xType, zType;
+
+    for (auto f : symbols->getFunctions()) {
+        for (auto l : symbols->getLocals(f)) {
+            if(l->getName() == "x")
+                xSS << *(types->getInferredType(l));
+            else if(l->getName() == "z")
+                zSS << *(types->getInferredType(l));
+        }
+    }
+
+    xType = xSS.str();
+    zType = zSS.str();
+
+    REQUIRE(xType == "int");
+    REQUIRE(zType == "{f:int}");
+}
+
+TEST_CASE("T12: Integration", "[Integration]") {
+    std::stringstream stream;
+    stream << R"( c() {return 0;} b() {return c;} a() {return b();} )";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    std::unique_ptr<SymbolTable> symbols;
+    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
+
+    auto analysis = SemanticAnalysis::analyze(ast.get());
+    auto types = analysis->getTypeResults();
+
+    auto typeSignatures = types->unifier->getTypeSignatures();
+
+    std::stringstream ss1, ss2, ss3;
+    bool count = 1;
+    for (auto const &pair: typeSignatures) 
+        if(count == 1) {
+            ss1 << *(pair.second.get());
+            count = 2;
+        }
+        else if (count == 2) {
+            ss2 << *(pair.second.get());
+            count = 3;
+        } else if(count == 3) {
+            ss3 << *(pair.second.get());
+        }
+
+    
+    std::string f1Type, f2Type, f3Type;
+    f1Type = ss1.str();
+    f2Type = ss2.str();
+    f3Type = ss3.str();
+
+    REQUIRE(f1Type == "() -> int(int)");
+    REQUIRE(f2Type == "() -> int(int)");
+    REQUIRE(f3Type == "() -> int(int)");
+}
