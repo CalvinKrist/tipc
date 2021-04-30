@@ -79,8 +79,18 @@ void Unifier::solve() {
 }
 
 void Unifier::solve(std::vector<TypeConstraint> constraints){
-    for(TypeConstraint& constraint : constraints)
-            unify(constraint.lhs, constraint.rhs);
+    for(TypeConstraint& constraint : constraints) 
+      unify(constraint.lhs, constraint.rhs);
+
+    // Add type signatures after all constraints are processed
+    for(TypeConstraint& constraint : constraints) 
+      if(auto funcType = dynamic_cast<TipFunction*>(constraint.rhs.get())) {
+          auto conStr = consToStr(constraint);
+          std::string id = conStr.substr(0, conStr.find("="));
+
+          if(funcMap.find(id) == funcMap.end()) 
+            funcMap.emplace(id, inferred(constraint.lhs));
+      }
 }
 
 void Unifier::solvePolymorphic(std::vector<TypeConstraint> constraints){
@@ -90,8 +100,6 @@ void Unifier::solvePolymorphic(std::vector<TypeConstraint> constraints){
         if(auto funcType = dynamic_cast<TipFunction*>(constraint.rhs.get())){
             auto conStr = consToStr(constraint);
             std::string id = conStr.substr(0, conStr.find("="));
-
-            std::cout << conStr << std::endl;
 
             if(funcMap.find(id) == funcMap.end()) {
                 // Save function to map

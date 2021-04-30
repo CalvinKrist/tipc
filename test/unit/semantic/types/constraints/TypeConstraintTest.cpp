@@ -273,8 +273,8 @@ TEST_CASE("T10: Let-Polymorphism", "[Let-Polymorphism]") {
     f1Type = ss1.str();
     f2Type = ss2.str();
 
-    REQUIRE(f1Type == "() -> int(int)");
-    REQUIRE(f2Type == "(int) -> int(int)");
+    REQUIRE(f1Type == "() -> int");
+    REQUIRE(f2Type == "(int) -> int");
 }
 
 TEST_CASE("T11: Integration", "[Integration]") {
