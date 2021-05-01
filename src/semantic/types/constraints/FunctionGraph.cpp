@@ -13,7 +13,7 @@ void FunctionGraphCreator::FuncVisitor::endVisit(ASTFunAppExpr* func){
         if(locals.find(f->getName()) == locals.end()){
             functions.emplace(program->findFunctionByName(f->getName()));
         } else{
-            // Function variable being called
+            functions.emplace(program->findFunctionByName(f->getName()));
         }
     } else{
         // Function variable being called
@@ -69,9 +69,26 @@ bool FunctionGraphCreator::isFunctionRecursive(ASTFunction* func) const {
 }
 std::set<ASTFunction*> FunctionGraphCreator::getRecursiveFunctions() const {
     std::set<ASTFunction*> functions{};
-    for(auto& pair : graph){
-        if(isFunctionRecursive(pair.first)){
-            functions.emplace(pair.first);
+    std::set<ASTFunction*> visited;
+
+    for(auto& pair : graph) {
+        if(isFunctionRecursive(pair.first) && visited.find(pair.first) == visited.end()) {
+
+            // Add entire call tree of function to list
+            std::queue<ASTFunction*> queue;
+            queue.push(pair.first);
+            visited.emplace(pair.first);
+
+            while(queue.size() > 0) {
+                auto func{ queue.front() };
+                queue.pop();
+                functions.emplace(func);
+
+                for(auto& node : graph.find(func)->second->possibleCalls) {
+                    if(visited.find(node->associatedFunction) == visited.end())
+                        queue.emplace(node->associatedFunction);
+                }
+            }
         }
     }
     return functions;
