@@ -48,8 +48,14 @@ TEST_CASE("T1: FlowAnalysis", "[FlowAnalysis]") {
     FunctionGraphCreator analyzer{ ast.get() };
     auto recursives{ analyzer.getRecursiveFunctions() };
 
-    for(auto func : recursives)
+    bool covered = false;
+
+    for(auto func : recursives) {
         REQUIRE(func->getName() == "rec");
+        covered = true;
+    }
+
+    REQUIRE(covered);
 }
 
 TEST_CASE("T2: FlowAnalysis", "[FlowAnalysis]") {
@@ -74,7 +80,6 @@ TEST_CASE("T2: FlowAnalysis", "[FlowAnalysis]") {
     REQUIRE(recCovered);
     REQUIRE(nonRecCovered);
 }
-
 
 TEST_CASE("T3: FlowAnalysis", "[FlowAnalysis]") {
     std::stringstream stream;
@@ -345,4 +350,100 @@ TEST_CASE("T12: Integration", "[Integration]") {
     REQUIRE(f1Type == "() -> int(int)");
     REQUIRE(f2Type == "() -> int(int)");
     REQUIRE(f3Type == "() -> int(int)");
+}
+
+TEST_CASE("T13: Failing Tests", "[Failing Tests]") {
+    std::stringstream stream;
+    stream << R"(id(a, x) { if(x != 0){ a = id(a, x-1); } return a; } )";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    std::unique_ptr<SymbolTable> symbols;
+    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
+
+    auto analysis = SemanticAnalysis::analyze(ast.get());
+    auto types = analysis->getTypeResults();
+
+    auto typeSignatures = types->unifier->getTypeSignatures();
+
+    std::stringstream ss;
+    for (auto const &pair: typeSignatures) 
+        ss << *(pair.second.get());
+
+    
+    std::string funcType;
+    funcType = ss.str();
+
+    REQUIRE(funcType == "(α<a>, int) -> α<a>");
+}
+
+TEST_CASE("T14: Failing Tests", "[Failing Tests]") {
+    std::stringstream stream;
+    stream << R"(id(a) {  return a; } rec(x) {x = id(x); if(x != 0) {x = rec(x-1);} return x; } )";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    std::unique_ptr<SymbolTable> symbols;
+    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
+
+    auto analysis = SemanticAnalysis::analyze(ast.get());
+    auto types = analysis->getTypeResults();
+
+    auto typeSignatures = types->unifier->getTypeSignatures();
+
+    std::stringstream s1, s2;
+    int count = 0;
+    for (auto const &pair: typeSignatures) 
+        if(count == 0) {
+            s1 << *(pair.second.get());
+            count += 1;
+        } else {
+            s2 << *(pair.second.get());
+        }
+        
+
+    std::string f1Type, f2Type;
+    f1Type = s1.str();
+    f2Type = s2.str();
+
+    REQUIRE(f1Type == "(α<a>) -> α<a>");
+    REQUIRE(f2Type == "(int) -> int");
+}
+
+TEST_CASE("T15: Failing Tests", "[Failing Tests]") {
+    std::stringstream stream;
+    stream << R"(rec(){ var x; x = rec; return x(); })";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    FunctionGraphCreator analyzer{ ast.get() };
+    auto recursives{ analyzer.getRecursiveFunctions() };
+
+    bool covered = false;
+
+    for(auto func : recursives) {
+        REQUIRE(func->getName() == "rec");
+        covered = true;
+    }
+
+    REQUIRE(covered);
+}
+
+TEST_CASE("T16: Failing Tests", "[Failing Tests]") {
+    std::stringstream stream;
+    stream << R"(poly(x){ var y; if(y == 0) {x = 0;} else {x = {d:1}; } return x; })";
+
+    auto ast = ASTHelper::build_ast(stream);
+
+    FunctionGraphCreator analyzer{ ast.get() };
+    auto recursives{ analyzer.getRecursiveFunctions() };
+
+    bool covered = false;
+
+    for(auto func : recursives) {
+        REQUIRE(func->getName() == "rec");
+        covered = true;
+    }
+
+    REQUIRE(covered);
 }

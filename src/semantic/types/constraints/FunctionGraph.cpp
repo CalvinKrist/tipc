@@ -85,8 +85,10 @@ std::set<ASTFunction*> FunctionGraphCreator::getRecursiveFunctions() const {
                 functions.emplace(func);
 
                 for(auto& node : graph.find(func)->second->possibleCalls) {
-                    if(visited.find(node->associatedFunction) == visited.end())
+                    if(visited.find(node->associatedFunction) == visited.end()) {
+                        visited.emplace(node->associatedFunction);
                         queue.emplace(node->associatedFunction);
+                    }
                 }
             }
         }
