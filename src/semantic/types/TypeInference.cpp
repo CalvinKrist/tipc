@@ -20,7 +20,6 @@ std::unique_ptr<TypeInference> TypeInference::check(ASTProgram* ast, SymbolTable
 
   while(!queue.empty()) {
     auto func{ queue.front() };
-    std::cout << "Solving function " << func->GetName() << std::endl;
     unifier->solve(func, symbols);
     queue.pop();
   }

@@ -50,7 +50,6 @@ void FunctionGraphCreator::DfsTraverseAsDAG(FunctionGroup* current,
 FunctionGraphCreator::FunctionGraphCreator(ASTProgram* program) : program{ program }{
     BuildGraph();
     Derecursify();
-    Print();
 }
 void FunctionGraphCreator::Union(FunctionGroup* fg1, FunctionGroup* fg2){
     auto r1{ Find(fg1) };

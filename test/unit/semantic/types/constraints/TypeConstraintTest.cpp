@@ -81,15 +81,17 @@ TEST_CASE("T3: Interprocedural Recursion", "[FlowAnalysis]") {
     REQUIRE(analyzer.isFunctionRecursive(ast->findFunctionByName("rec2")));
 }
 
-TEST_CASE("T4: FlowAnalysis", "[FlowAnalysis]") {
+TEST_CASE("T4: Overlapping Recursive Groups", "[FlowAnalysis]") {
     std::stringstream stream;
-    stream << R"(rec(x){ if(x != 0) {x = rec(x - 1); } return x;} )";
+    stream << R"(a(){ return b(); } b(){ var x; x = a(); return c(); } c(){ return b(); })";
 
     auto ast = ASTHelper::build_ast(stream);
 
     FunctionGraphCreator analyzer{ ast.get() };
 
-    REQUIRE(analyzer.isFunctionRecursive(ast->findFunctionByName("rec")));
+    REQUIRE(analyzer.isFunctionRecursive(ast->findFunctionByName("a")));
+    REQUIRE(analyzer.isFunctionRecursive(ast->findFunctionByName("b")));
+    REQUIRE(analyzer.isFunctionRecursive(ast->findFunctionByName("c")));
 }
 
 TEST_CASE("T5: FlowAnalysis", "[FlowAnalysis]") {
@@ -150,7 +152,7 @@ TEST_CASE("T7: FlowAnalysis", "[FlowAnalysis]") {
 
 TEST_CASE("T8: Let-Polymorphism", "[Let-Polymorphism]") {
     std::stringstream stream;
-    stream << R"(id(a) { return a; } )";
+    stream << R"(id(a) { return a; } x(y){ return y; })";
 
     auto ast = ASTHelper::build_ast(stream);
     auto analysis = SemanticAnalysis::analyze(ast.get());
@@ -207,117 +209,70 @@ TEST_CASE("T11: Integration", "[Integration]") {
 
 TEST_CASE("T12: Integration", "[Integration]"){
     std::stringstream stream;
-    stream << R"( c() {return 0;} b() {return c();} a() {return b();} )";
+    stream << R"( id(x) {return x;} b() {var p, q; p = id(0); q = id(alloc 0); return b(); } a() {return b();} )";
 
     auto ast = ASTHelper::build_ast(stream);
     auto analysis = SemanticAnalysis::analyze(ast.get());
     auto types = analysis->getTypeResults();
 
-    REQUIRE(ToString(types->getInferredType(ast->findFunctionByName("a")->getDecl())) == "() -> int");
-    REQUIRE(ToString(types->getInferredType(ast->findFunctionByName("b")->getDecl())) == "() -> int");
-    REQUIRE(ToString(types->getInferredType(ast->findFunctionByName("c")->getDecl())) == "() -> int");
-}
-
-TEST_CASE("T13: Failure - Function Variable Typing", "[Failing Tests]"){
-    std::stringstream stream;
-    stream << R"( c() {return 0;} b() {return c;} a() {return b();} )";
-
-    auto ast = ASTHelper::build_ast(stream);
-    auto analysis = SemanticAnalysis::analyze(ast.get());
-    auto types = analysis->getTypeResults();
-
+    REQUIRE(ToString(types->getInferredType(ast->findFunctionByName("id")->getDecl())) == "(α<x>) -> α<x>");
+    REQUIRE(ToString(types->getInferredType(ast->findFunctionByName("b")->getDecl())) == "() -> α<b()>");
     REQUIRE(ToString(types->getInferredType(ast->findFunctionByName("a")->getDecl())) == "() -> α<b()>");
-    REQUIRE(ToString(types->getInferredType(ast->findFunctionByName("b")->getDecl())) == "() -> () -> int");
-    REQUIRE(ToString(types->getInferredType(ast->findFunctionByName("c")->getDecl())) == "() -> int");
-}
-/*
-TEST_CASE("T13: Failing Tests", "[Failing Tests]") {
-    std::stringstream stream;
-    stream << R"(id(a, x) { if(x != 0){ a = id(a, x-1); } return a; } )";
-
-    auto ast = ASTHelper::build_ast(stream);
-
-    std::unique_ptr<SymbolTable> symbols;
-    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
-
-    auto analysis = SemanticAnalysis::analyze(ast.get());
-    auto types = analysis->getTypeResults();
-
-    auto typeSignatures = types->unifier->getTypeSignatures();
-
-    std::stringstream ss;
-    for (auto const &pair: typeSignatures) 
-        ss << *(pair.second.get());
-
-    
-    std::string funcType;
-    funcType = ss.str();
-
-    REQUIRE(funcType == "(α<a>, int) -> α<a>");
 }
 
-TEST_CASE("T14: Failing Tests", "[Failing Tests]") {
+TEST_CASE("T13: Failure - Recursive Polymorphic Function", "[Failing Tests]") {
     std::stringstream stream;
-    stream << R"(id(a) {  return a; } rec(x) {x = id(x); if(x != 0) {x = rec(x-1);} return x; } )";
+    stream << R"(swapper(a, b){ var p; p = swapper(b, a); return a; } x(){ return swapper(1, alloc 3); })";
 
     auto ast = ASTHelper::build_ast(stream);
+    REQUIRE_THROWS(SemanticAnalysis::analyze(ast.get()));
+}
 
-    std::unique_ptr<SymbolTable> symbols;
-    REQUIRE_NOTHROW(symbols = SymbolTable::build(ast.get()));
-
-    auto analysis = SemanticAnalysis::analyze(ast.get());
-    auto types = analysis->getTypeResults();
-
-    auto typeSignatures = types->unifier->getTypeSignatures();
-
-    std::stringstream s1, s2;
-    int count = 0;
-    for (auto const &pair: typeSignatures) 
-        if(count == 0) {
-            s1 << *(pair.second.get());
-            count += 1;
-        } else {
-            s2 << *(pair.second.get());
+TEST_CASE("T14: Failure - Function Pointers", "[Failing Tests]") {
+    std::stringstream stream;
+    stream << R"(
+        ident(x){ return x; }
+        caller(a, b, f){
+                var x;
+                x = f(a);
+                return f(b);
         }
-        
+        test(){
+                return caller(1, alloc 3, ident);
+        }
+    )";
 
-    std::string f1Type, f2Type;
-    f1Type = s1.str();
-    f2Type = s2.str();
+    auto ast = ASTHelper::build_ast(stream);
+    auto analysis = SemanticAnalysis::analyze(ast.get());
+    auto types = analysis->getTypeResults();
 
-    REQUIRE(f1Type == "(α<a>) -> α<a>");
-    REQUIRE(f2Type == "(int) -> int");
+    // this is unable to identify the return type of `caller` as `f` is never unified with `ident`
+    REQUIRE(ToString(types->getInferredType(ast->findFunctionByName("test")->getDecl())) == "() -> α<caller(1, alloc 3, ident)>");
 }
 
-TEST_CASE("T15: Failing Tests", "[Failing Tests]") {
+TEST_CASE("T15: Failure - Recursive Function Pointer Detection", "[Failing Tests]") {
     std::stringstream stream;
     stream << R"(rec(){ var x; x = rec; return x(); })";
 
     auto ast = ASTHelper::build_ast(stream);
-
     FunctionGraphCreator analyzer{ ast.get() };
-    auto recursives{ analyzer.getRecursiveFunctions() };
 
-    bool covered = false;
-
-    for(auto func : recursives) {
-        REQUIRE(func->getName() == "rec");
-        covered = true;
-    }
-
-    REQUIRE(covered);
+    REQUIRE(!analyzer.isFunctionRecursive(ast->findFunctionByName("rec")));
 }
 
-TEST_CASE("T16: Failing Tests", "[Failing Tests]") {
+TEST_CASE("T16: Failure - Flow Polymorphism", "[Failing Tests]") {
     std::stringstream stream;
-    stream << R"(poly(x){ var y; if(y == 0) {x = 0;} else {x = {d:1}; } return x; })";
+    stream << R"(
+        poly(x) { 
+            var y; 
+            if(y == 0) {
+                x = 0;
+            } else {
+                x = {d:1};
+            } 
+            return x; 
+        })";
 
     auto ast = ASTHelper::build_ast(stream);
-
-    FunctionGraphCreator analyzer{ ast.get() };
-
-    REQUIRE(analyzer.isFunctionRecursive(ast->findFunctionByName("rec")));
-
-    REQUIRE(covered);
+    REQUIRE_THROWS(SemanticAnalysis::analyze(ast.get()));
 }
-*/

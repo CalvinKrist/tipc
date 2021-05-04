@@ -107,12 +107,11 @@ void Unifier::solve(const std::vector<TypeConstraint>& constraints, FunctionGrou
         auto funcType = dynamic_cast<TipFunction*>(constraint.rhs.get());
         if(group && funcType){
             std::string id = typeToString(*constraint.lhs);
-            if(funcMap.find(id) == funcMap.end() || contained.find(id) != contained.end()){
+            if(contained.find(id) != contained.end()){
                 unify(constraint.lhs, constraint.rhs);
-                funcMap.emplace(id, inferred(constraint.lhs));
             } else {
                 // Use saved function
-                auto copy = DeepCopier::copy(funcMap[id]);
+                auto copy = DeepCopier::copy(inferred(constraint.lhs));
                 unify(copy, constraint.rhs);
             }
 
