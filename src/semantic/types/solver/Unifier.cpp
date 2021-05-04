@@ -4,6 +4,7 @@
 #include "TipAlpha.h"
 #include "TipCons.h"
 #include "TipMu.h"
+#include "TypeConstraintCollectVisitor.h"
 #include "TypeVars.h"
 #include "UnificationError.h"
 #include "loguru.hpp"
@@ -78,31 +79,37 @@ void Unifier::solve() {
     solve(this->constraints);
 }
 
-void Unifier::solve(std::vector<TypeConstraint> constraints){
-    for(TypeConstraint& constraint : constraints) 
-      unify(constraint.lhs, constraint.rhs);
-
-    // Add type signatures after all constraints are processed
-    for(TypeConstraint& constraint : constraints) 
-      if(auto funcType = dynamic_cast<TipFunction*>(constraint.rhs.get())) {
-          auto conStr = consToStr(constraint);
-          std::string id = conStr.substr(0, conStr.find("="));
-
-          if(funcMap.find(id) == funcMap.end()) 
-            funcMap.emplace(id, inferred(constraint.lhs));
-      }
+void Unifier::solve(FunctionGroup* group, SymbolTable* table){
+    TypeConstraintCollectVisitor visitor(table);
+    for(auto& func : group->GetFuncs()){
+        func->accept(&visitor);
+    }
+    auto& constraints{ visitor.getCollectedConstraints() };
+    solve(constraints, group);
 }
 
-void Unifier::solvePolymorphic(std::vector<TypeConstraint> constraints){
+std::string typeToString(const TipType& type){
+    std::stringstream ss{};
+    ss << type;
+    return ss.str();
+}
+void Unifier::solve(const std::vector<TypeConstraint>& constraints, FunctionGroup* group){
+    // Track newly discovered functions that need to get added to the map at the end
+    std::map<std::string, std::shared_ptr<TipType>> newFunctions;
 
-    for(TypeConstraint& constraint : constraints){
-
-        if(auto funcType = dynamic_cast<TipFunction*>(constraint.rhs.get())){
-            auto conStr = consToStr(constraint);
-            std::string id = conStr.substr(0, conStr.find("="));
-
-            if(funcMap.find(id) == funcMap.end()) {
-                // Save function to map
+    std::cout << "Processing " << constraints.size() << " constraints." << std::endl;
+    std::set<std::string> contained{};
+    if(group){
+        for(auto& func : group->GetFuncs()){
+            contained.emplace(typeToString(TipVar(func->getDecl())));
+        }
+    }
+    for(auto& constraint : constraints){
+        std::cout << "Processing constraint  " << constraint << std::endl;
+        auto funcType = dynamic_cast<TipFunction*>(constraint.rhs.get());
+        if(group && funcType){
+            std::string id = typeToString(*constraint.lhs);
+            if(funcMap.find(id) == funcMap.end() || contained.find(id) != contained.end()){
                 unify(constraint.lhs, constraint.rhs);
                 funcMap.emplace(id, inferred(constraint.lhs));
             } else {

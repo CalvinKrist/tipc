@@ -2,44 +2,45 @@
 
 #include "AST.h"
 #include "ASTVisitor.h"
+#include "FunctionGroup.h"
 #include <map>
-#include <set>
 #include <memory>
 #include <queue>
+#include <vector>
+#include <set>
 
 class FunctionGraphCreator {
-    class Node {
-        friend class FunctionGraphCreator;
-        ASTFunction* associatedFunction;
-        std::set<Node*> possibleCalls;
-        std::set<Node*> callsiteFuncs;
+  std::map<FunctionGroup*, FunctionGroup*> parents;
+  std::map<FunctionGroup*, int> rank;
 
-    public:
-        Node(ASTFunction* func);
-        void addCall(Node* node);
-    };
+  void Union(FunctionGroup* f1, FunctionGroup* f2);
+  FunctionGroup* Find(FunctionGroup* f1);
 
-    class FuncVisitor: public ASTVisitor {
-        friend class FunctionGraphCreator;
-        std::set<ASTFunction*> functions;
-        std::set<std::string> locals;
-        ASTProgram* program;
-    public:
-        FuncVisitor(ASTProgram* program);
-        void endVisit(ASTDeclNode* call) override;
-        void endVisit(ASTFunAppExpr* call) override;
-    };
-
-    std::map<ASTFunction*, std::unique_ptr<Node>> graph;
+  class FuncVisitor : public ASTVisitor {
+    friend class FunctionGraphCreator;
+    std::set<ASTFunction*> functions;
+    std::set<std::string> locals;
     ASTProgram* program;
-    void buildGraph();
-    bool dfsTraverseAsDAG(Node* current, std::set<Node*>& visited) const;
-public:
 
-    FunctionGraphCreator(ASTProgram* program);
-    bool isDAG() const;
-    bool isFunctionRecursive(ASTFunction* func) const;
-    std::set<ASTFunction*> getRecursiveFunctions() const;
-    std::queue<ASTFunction*> inverseTopoSort();
-    void print();
+  public:
+    FuncVisitor(ASTProgram* program);
+    void endVisit(ASTDeclNode* call) override;
+    void endVisit(ASTFunAppExpr* call) override;
+  };
+
+  std::map<ASTFunction*, std::shared_ptr<FunctionGroup>> graph;
+  std::vector<FunctionGroup*> roots;
+  ASTProgram* program;
+
+  void BuildGraph();
+  void Derecursify();
+  void DfsTraverseAsDAG(FunctionGroup* current, 
+                        std::set<FunctionGroup*>& visited, 
+                        std::vector<FunctionGroup*>& callstack);
+
+public:
+  FunctionGraphCreator(ASTProgram* program);
+  std::queue<FunctionGroup*> InverseTopoSort();
+  bool isFunctionRecursive(ASTFunction* func);
+  void Print();
 };

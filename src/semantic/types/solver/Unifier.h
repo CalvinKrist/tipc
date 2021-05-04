@@ -5,6 +5,8 @@
 #include "TypeConstraint.h"
 #include "UnionFind.h"
 #include "TipFunction.h"
+#include "FunctionGroup.h"
+#include "SymbolTable.h"
 #include <set>
 #include <vector>
 
@@ -47,8 +49,9 @@ public:
      */
     void solve();
 
-    void solve(std::vector<TypeConstraint> constraints);
-    void solvePolymorphic(std::vector<TypeConstraint> constraints);
+    void solve(FunctionGroup* group, SymbolTable* symbols);
+
+    void solve(const std::vector<TypeConstraint>& constraints, FunctionGroup* group = nullptr);
 
     /*! \brief Returns the inferred type for a given type.
      * \pre The unifier has computed a solution.

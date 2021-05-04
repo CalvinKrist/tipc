@@ -14,27 +14,15 @@
  */
 std::unique_ptr<TypeInference> TypeInference::check(ASTProgram* ast, SymbolTable* symbols) {
 
-  auto unifier{ std::make_unique<Unifier>() };
-  TypeConstraintCollectVisitor visitor(symbols);
-
   FunctionGraphCreator analyzer{ ast };
-  auto recursives{ analyzer.getRecursiveFunctions() };
-
-  // Collect contraints from recursive functions
-  for(auto& func : recursives){
-      func->accept(&visitor);
-  }
-
-  unifier->solve(visitor.getCollectedConstraints());
-
-  auto queue{ analyzer.inverseTopoSort() };
+  auto unifier{ std::make_unique<Unifier>() };
+  auto queue{ analyzer.InverseTopoSort() };
 
   while(!queue.empty()) {
     auto func{ queue.front() };
+    std::cout << "Solving function " << func->GetName() << std::endl;
+    unifier->solve(func, symbols);
     queue.pop();
-    visitor = TypeConstraintCollectVisitor(symbols);
-    func->accept(&visitor);
-    unifier->solvePolymorphic(visitor.getCollectedConstraints());
   }
 
   auto r = std::make_unique<TypeInference>(symbols, std::move(unifier));
