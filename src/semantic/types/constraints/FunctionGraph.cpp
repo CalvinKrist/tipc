@@ -8,7 +8,12 @@ void FunctionGraphCreator::FuncVisitor::endVisit(ASTFunAppExpr* func){
         if(locals.find(f->getName()) == locals.end()){
             functions.emplace(program->findFunctionByName(f->getName()));
         } else{
-            // Function variable being called
+            auto func{ program->findFunctionByName(f->getName()) };
+            if(func){
+                functions.emplace(func);
+            } else{
+                // Function variable being called
+            }
         }
     } else{
         // Function variable being called
@@ -24,7 +29,9 @@ void FunctionGraphCreator::DfsTraverseAsDAG(FunctionGroup* current,
     if(visited.find(current) != visited.end()){
         for(int i = 0; i < callstack.size(); i++){
             if(callstack[i] == current){
+                callstack[i]->recursive = true;
                 for(int j = i + 1; j < callstack.size(); j++){
+                    callstack[j]->recursive = true;
                     Union(callstack[j], current);
                 }
                 return;
@@ -43,6 +50,7 @@ void FunctionGraphCreator::DfsTraverseAsDAG(FunctionGroup* current,
 FunctionGraphCreator::FunctionGraphCreator(ASTProgram* program) : program{ program }{
     BuildGraph();
     Derecursify();
+    Print();
 }
 void FunctionGraphCreator::Union(FunctionGroup* fg1, FunctionGroup* fg2){
     auto r1{ Find(fg1) };
@@ -73,7 +81,7 @@ void FunctionGraphCreator::BuildGraph(){
     }
 
     for(auto func : program->getFunctions()){
-        auto visitor{ FuncVisitor(program) };
+        FuncVisitor visitor{ program };
         auto& node{ graph.at(func) };
         func->accept(&visitor);
         for(auto callTarget : visitor.functions){
@@ -95,8 +103,8 @@ void FunctionGraphCreator::Derecursify(){
     for(auto& pair : graph){
         auto parent{ Find(pair.second.get()) };
         if(parent != pair.second.get()){
-            pair.second = graph[*parent->GetFuncs().begin()];
             parent->Union(pair.second.get());
+            pair.second = graph[*parent->GetFuncs().begin()];
         } else{
             roots.emplace_back(parent);
         }
@@ -156,5 +164,5 @@ void FunctionGraphCreator::Print(){
     std::cout << std::endl;
 }
 bool FunctionGraphCreator::isFunctionRecursive(ASTFunction* func){
-    return graph.at(func)->GetCalls().size() != 1;
+    return graph.at(func)->recursive;
 }

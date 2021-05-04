@@ -97,7 +97,6 @@ void Unifier::solve(const std::vector<TypeConstraint>& constraints, FunctionGrou
     // Track newly discovered functions that need to get added to the map at the end
     std::map<std::string, std::shared_ptr<TipType>> newFunctions;
 
-    std::cout << "Processing " << constraints.size() << " constraints." << std::endl;
     std::set<std::string> contained{};
     if(group){
         for(auto& func : group->GetFuncs()){
@@ -105,7 +104,6 @@ void Unifier::solve(const std::vector<TypeConstraint>& constraints, FunctionGrou
         }
     }
     for(auto& constraint : constraints){
-        std::cout << "Processing constraint  " << constraint << std::endl;
         auto funcType = dynamic_cast<TipFunction*>(constraint.rhs.get());
         if(group && funcType){
             std::string id = typeToString(*constraint.lhs);

@@ -4,8 +4,12 @@ FunctionGroup::FunctionGroup(ASTFunction* base){
 	associatedFunctions.emplace(base);
 }
 void FunctionGroup::AddCall(FunctionGroup* group){
-	possibleCalls.emplace(group);
-	group->callsiteFuncs.emplace(this);
+	if(group == this){
+		recursive = true;
+	} else{
+		possibleCalls.emplace(group);
+		group->callsiteFuncs.emplace(this);
+	}
 }
 void FunctionGroup::Union(FunctionGroup* group){
 	group->alive = false;
@@ -20,17 +24,25 @@ void FunctionGroup::Union(FunctionGroup* group){
 	callsiteFuncs.erase(this);
 }
 void FunctionGroup::Finalize(){
-	for(auto it = possibleCalls.begin(); it != possibleCalls.end(); it++){
-		if(!(*it)->alive){
-			possibleCalls.erase(it);
+	if(possibleCalls.size()){
+		for(auto it = possibleCalls.begin(); it != possibleCalls.end();){
+			if(!(*it)->alive){
+				it = possibleCalls.erase(it);
+			} else{
+				it++;
+			}
 		}
 	}
-	for(auto it = callsiteFuncs.begin(); it != callsiteFuncs.end(); it++){
-		if(!(*it)->alive){
-			callsiteFuncs.erase(it);
+	if(callsiteFuncs.size()){
+		for(auto it = callsiteFuncs.begin(); it != callsiteFuncs.end();){
+			if(!(*it)->alive){
+				it = callsiteFuncs.erase(it);
+			} else{
+				it++;
+			}
 		}
+		callsiteFuncsDuplicate = callsiteFuncs;
 	}
-	callsiteFuncsDuplicate = callsiteFuncs;
 }
 bool FunctionGroup::IsTerminal() const{ return callsiteFuncs.size() == 0; }
 void FunctionGroup::PruneCallsite(FunctionGroup* group){ callsiteFuncs.erase(group); }

@@ -14,6 +14,7 @@ class FunctionGroup {
     bool alive{ true };
 public:
 
+    bool recursive{ false };
     FunctionGroup(ASTFunction* func);
     const std::set<FunctionGroup*>& GetCalls() const;
     const std::set<ASTFunction*>& GetFuncs() const;
